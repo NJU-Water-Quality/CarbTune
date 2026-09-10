@@ -1,6 +1,6 @@
 # CarbTune
 
-CarbTune is a two-stage XGBoost framework for predicting bacterial carbon-source utilization. The first model classifies growth feasibility; the second predicts the normalized partial area under the growth curve (pAUCg) for growth-positive strain–carbon pairs. The repository contains the 12-strain input dataset, protein FASTA files, carbon-source structures, training code, and an inference entry point.
+The water treatment industry is facing increasing pressure to remove emerging organic pollutants, but popular biological methods are still limited by heuristic external carbon additions that ignore competition for microbial resources. This restriction hinders precise enrichment in pollutant degradation communities and limits the efficiency of biological purification. Here, we introduce CarbTune, a mechanical artificial intelligence framework that integrates genome-scale metabolic models, protein language model embeddings, and receptor molecular descriptors to calculate pUC-a low-receptor, flux-based competition phenotype formally related to Monod-R* resource competition theory-and the carbon competition overlap index for 45 carbon sources. By embedding the principles of competition for ecological resources into an interpretable deep learning workflow, this work redefines carbon management strategies in biological wastewater treatment and provides a scalable, economically beneficial way to robust control of emerging pollutants. 
 
 ## Model inputs
 
