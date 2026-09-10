@@ -26,7 +26,6 @@ from sklearn.decomposition import PCA
 
 warnings.filterwarnings("ignore", message="R\\^2 score is not well-defined")
 
-# ===== RDKit（可选）=====
 try:
     from rdkit import Chem
     from rdkit.Chem import Descriptors, rdMolDescriptors
@@ -35,12 +34,10 @@ try:
 except Exception:
     Chem = None
 
-# 结构描述符列
 STRUCT_DESC_COLS = [
     'MolWt','LogP','TPSA','HBD','HBA','RotBonds','RingCount','HeavyAtom','FractionCSP3'
 ]
 
-# ===== Torch / ESM（可选）=====
 try:
     import torch
     import esm
@@ -48,19 +45,17 @@ except Exception:
     torch = None
     esm = None
 
-# ===== AA 基础特征 =====
 AA = "ACDEFGHIKLMNPQRSTVWY"
 KD = {
     'I': 4.5,'V': 4.2,'L': 3.8,'F': 2.8,'C': 2.5,'M': 1.9,'A': 1.8,'G': -0.4,'T': -0.7,'S': -0.8,
     'W': -0.9,'Y': -1.3,'P': -1.6,'H': -3.2,'E': -3.5,'Q': -3.5,'D': -3.5,'N': -3.5,'K': -3.9,'R': -4.5
 }
 
-# ---------- 列名规范化 ----------
 COL_SYNONYMS = {
-    'strain': {'strain','菌株','菌株名称','organism','model'},
-    'carbon': {'carbon','碳源','碳源名称','substrate','carbon_name'},
-    'uptake': {'uptake','intake','摄入','摄入量','carbon_uptake','u'},
-    'growth': {'growth','生长','生长率','growth_rate','g'},
+    'strain': {'strain','organism','model'},
+    'carbon': {'carbon','substrate','carbon_name'},
+    'uptake': {'uptake','intake','carbon_uptake','u'},
+    'growth': {'growth','growth_rate','g'},
 }
 
 _ws_re = re.compile(r"\s+")
@@ -109,13 +104,10 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
                 mapping[col]=std; break
     return df.rename(columns=mapping)
 
-# ---------- 序列清洗/FASTA 读取 ----------
 def _clean_seq(seq: str) -> str:
-    # 仅保留字母，转大写
     return re.sub(r'[^A-Za-z]', '', str(seq or '')).upper()
 
 def _read_fasta_sequences(fpath: str) -> List[str]:
-    """读取本地 FASTA，返回其中每条蛋白的序列列表（只保留A-Z）"""
     seqs = []
     if not fpath:
         return seqs
@@ -140,7 +132,6 @@ def _read_fasta_sequences(fpath: str) -> List[str]:
         pass
     return seqs
 
-# ---------- AA 特征 ----------
 def aa_features(seq: str) -> Dict[str, float]:
     s = re.sub(r'[^A-Z]', '', (seq or '').upper())
     feats = {}
@@ -157,13 +148,6 @@ def aa_features(seq: str) -> Dict[str, float]:
     return feats
 
 def aa_features_aggregate(seqs: List[str]) -> Dict[str, float]:
-    """
-    同一菌株多条蛋白 -> “长度加权”聚合
-    - aa_X：总体频率（总计数 / 总长度）
-    - length：总长度
-    - frac_aromatic / frac_charged：总体频率计算
-    - kd_mean：按残基加权的整体平均 KD
-    """
     feats = {}
     if not seqs:
         for a in AA: feats[f'aa_{a}'] = 0.0
@@ -196,16 +180,9 @@ def aa_features_aggregate(seqs: List[str]) -> Dict[str, float]:
     return feats
 
 def build_seq_df_from_sequences_csv(seqs_csv: Path) -> pd.DataFrame:
-    """
-    读取 sequences.csv（列：strain, sequence, fasta_path）
-    - 对于每一行：
-      * 如果 sequence 非空 -> 作为一条蛋白
-      * 如果 fasta_path 指向有效 FASTA -> 追加该文件内所有条目
-    返回列：strain, sequence （可能同株多行）
-    """
     df = pd.read_csv(seqs_csv)
     if 'strain' not in df.columns:
-        raise ValueError("sequences.csv 必须包含列: strain")
+        raise ValueError("sequences.csv column must be included: strain")
     if 'sequence' not in df.columns:
         df['sequence'] = ''
     if 'fasta_path' not in df.columns:
@@ -231,7 +208,6 @@ def build_seq_df_from_sequences_csv(seqs_csv: Path) -> pd.DataFrame:
         return pd.DataFrame(columns=['strain','sequence'])
     return pd.DataFrame(rows, columns=['strain','sequence'])
 
-# ---------- ESM2 嵌入 ----------
 ESM_NAME_MAP = {
     'esm2_t6_8M_UR50D': 'esm2_t6_8M_UR50D',
     'esm2_t12_35M_UR50D': 'esm2_t12_35M_UR50D',
@@ -240,9 +216,9 @@ ESM_NAME_MAP = {
 
 def _esm_load(model_name: str):
     if esm is None or torch is None:
-        raise RuntimeError("未安装 fair-esm / torch，无法使用 --esm_on")
+        raise RuntimeError("No fair-esm / torch --esm_on")
     if model_name not in ESM_NAME_MAP:
-        raise ValueError(f"不支持的 ESM2 模型: {model_name}")
+        raise ValueError(f"an unsupported ESM2: {model_name}")
     model, alphabet = getattr(esm.pretrained, model_name)()
     return model, alphabet
 
@@ -270,7 +246,6 @@ def _esm_check_meta_or_raise(meta_path: Path, expected: dict) -> dict:
     except Exception as e:
         raise RuntimeError(f"[ESM PCA] Failed to read meta file: {meta_path} ({e})")
 
-    # only check core keys (ignore device/batch_size etc.)
     core_keys = ["model_name", "layer", "pooling", "max_len", "pca_dim"]
     for k in core_keys:
         if k not in meta:
@@ -402,10 +377,7 @@ def esm_embed_dataframe(raw_seqs_df: pd.DataFrame,
                         device: str = 'auto',
                         max_len: int = 1022,
                         pca_dim: int = 11) -> pd.DataFrame:
-    """
-    输入：列 strain, sequence（允许同株多条蛋白）
-    输出：每株一行：strain + esm_0..esm_{pca_dim-1}（严格复用训练 PCA）
-    """
+ 
     out_cache.mkdir(parents=True, exist_ok=True)
     if device == 'auto':
         if (torch is not None) and torch.cuda.is_available():
@@ -417,14 +389,14 @@ def esm_embed_dataframe(raw_seqs_df: pd.DataFrame,
     model.eval().to(device)
     batch_converter = alphabet.get_batch_converter()
 
-    # 将 -1 自动映射到最后一层
+
     try:
         last_layer = int(model.num_layers)
     except Exception:
-        last_layer = 6  # 对 t6_8M 的兜底
+        last_layer = 6 
     layer_idx = last_layer if layer < 0 else int(layer)
     if layer_idx < 1 or layer_idx > last_layer:
-        raise ValueError(f"无效的 --esm_layer={layer}；应在 1..{last_layer}，或用 -1 表示最后一层")
+        raise ValueError(f"No --esm_layer={layer}；shall 1..{last_layer}")
 
     def _prep_seq(seq: str) -> str:
         s = re.sub(r'[^A-Za-z]', '', str(seq)).upper()
@@ -432,7 +404,7 @@ def esm_embed_dataframe(raw_seqs_df: pd.DataFrame,
             s = s[:max_len]
         return s
 
-    # 逐条蛋白向量（缓存）
+
     per_protein_vecs = []   # (strain, vec_ndarray)
     need_rows = []
     for _, r in raw_seqs_df.iterrows():
@@ -459,7 +431,7 @@ def esm_embed_dataframe(raw_seqs_df: pd.DataFrame,
             reps = out["representations"][layer_idx]  # (B, T, C)
 
             for (strain, seq, key, npy_path), rep in zip(batch, reps):
-                rep = rep[1:len(seq)+1, :]  # 去 BOS/EOS
+                rep = rep[1:len(seq)+1, :]
                 if pooling == 'median':
                     vec = torch.median(rep, dim=0).values
                 else:
@@ -471,7 +443,6 @@ def esm_embed_dataframe(raw_seqs_df: pd.DataFrame,
     if not per_protein_vecs:
         return pd.DataFrame()
 
-    # 按菌株聚合（多蛋白均值）
     by_strain = defaultdict(list)
     for s, v in per_protein_vecs:
         by_strain[s].append(v)
@@ -481,9 +452,7 @@ def esm_embed_dataframe(raw_seqs_df: pd.DataFrame,
         strains.append(s)
     X = np.vstack(mats).astype(np.float32)
 
-    # ===== 严格复用训练 PCA（StandardScaler+PCA）=====
     if pca_dim is None or int(pca_dim) <= 0:
-        # 不做 PCA：只返回 strain
         return pd.DataFrame({'strain': strains})
 
     expected = _esm_expected_meta(model_name, layer_idx, pooling, max_len, int(pca_dim))
@@ -493,8 +462,7 @@ def esm_embed_dataframe(raw_seqs_df: pd.DataFrame,
     df_emb = pd.DataFrame(Xp, columns=cols)
     df_emb.insert(0, 'strain', strains)
 
-    # ===== 记录完整 meta（覆盖/补全）=====
-    # 注意：上面的 _esm_load_or_fit_pca_pipe 已经写过 esm_meta.json（或校验过一致性）。
+
     meta_path = out_cache / "esm_meta.json"
     try:
         meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
@@ -513,7 +481,6 @@ def esm_embed_dataframe(raw_seqs_df: pd.DataFrame,
     meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding='utf-8')
     return df_emb
 
-# ---------- 结构特征 ----------
 def smiles_to_features(smiles: str, fp_bits=2048, radius=2):
     if Chem is None or not smiles:
         return None, {}
@@ -591,7 +558,6 @@ def build_carbon_struct_features(carbons_smiles: pd.DataFrame, pca_dim=13,
 
     return df_desc, df_fp_pca, report
 
-# ---------- 平台期识别 ----------
 def _plateau_from_curve(uptake: np.ndarray, growth: np.ndarray,
                         tol_frac: float, tol_abs_min: float,
                         value_mode: str='median') -> Tuple[float, float]:
@@ -654,7 +620,6 @@ def build_actual_labels_with_plateau(curves: pd.DataFrame,
                      'can_grow_actual': can})
     return pd.DataFrame(rows)
 
-# ---------- 特征列选择 ----------
 def pick_numeric_feature_cols(df: pd.DataFrame, exclude: List[str]) -> Tuple[List[str], List[str]]:
     keep, dropped = [], []
     for c in df.columns:
