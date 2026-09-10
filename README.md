@@ -6,14 +6,13 @@ The water treatment industry is facing increasing pressure to remove emerging or
 
 Each strain–carbon pair is represented by 44 features.
 
-| Feature block | Construction | Dimensions |
-|---|---|---:|
-| Amino-acid composition | Proteome-wide frequencies of 20 canonical amino acids, standardized and reduced by PCA | 11 |
-| ESM-2 | `esm2_t6_8M_UR50D`, layer 6, residue mean pooling per protein, mean aggregation across the proteome, standardization and PCA | 11 |
-| Molecular descriptors | MolWt, LogP, TPSA, HBD, HBA, rotatable bonds, ring count, heavy-atom count and fraction Csp3 | 9 |
-| Morgan fingerprint | Radius 2, 2,048 bits, standardized and reduced by PCA | 13 |
+| Feature block | Construction |
+|---|---:|
+| Amino-acid composition | Proteome-wide frequencies of 20 canonical amino acids, standardized and reduced by PCA |
+| ESM-2 | `esm2_t6_8M_UR50D`, layer 6, residue mean pooling per protein, mean aggregation across the proteome, standardization and PCA |
+| Molecular descriptors | MolWt, LogP, TPSA, HBD, HBA, rotatable bonds, ring count, heavy-atom count and fraction Csp3 |
+| Morgan fingerprint | Radius 2, 2,048 bits, standardized and reduced by PCA |
 
-Protein sequences longer than 512 amino acids are truncated to 512 residues for ESM-2 encoding. Protein-length and other proteome summary statistics are excluded. No missingness indicator is used.
 
 The classifier label is determined from the plateau growth rate using a default threshold of 1.0. pAUCg is calculated up to an uptake rate of 20 and is learned only from growth-positive pairs. Both stages use the same 44-dimensional feature matrix.
 
