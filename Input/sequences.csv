@@ -1,0 +1,13 @@
+strain,sequence,fasta_path
+A.denitrificansBP1,,Data/A.denitrificansBP1.faa
+C.necatorH16,,Data/C.necatorH16.faa
+C.testosteroni,,Data/C.testosteroni.faa
+D.oestradiolicumDSM16959,,Data/D.oestradiolicumDSM16959.faa
+M.smegmatisMC(2)155,,Data/M.smegmatisMC(2)155.faa
+M.universalisFAM5,,Data/M.universalisFAM5.faa
+P.aeruginosaPAO1,,Data/P.aeruginosaPAO1.faa
+P.denitrificansPD1222,,Data/P.denitrificansPD1222.faa
+P.stutzeriA1501,,Data/P.stutzeriA1501.faa
+T.aminoaromaticaMZ1T,,Data/T.aminoaromaticaMZ1T.faa
+T.nivea,,Data/T.nivea.faa
+V.paradoxusS110,,Data/V.paradoxusS110.faa

@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+input_validation.json
+results/esm_cache*/
+predictions/esm_cache*/
