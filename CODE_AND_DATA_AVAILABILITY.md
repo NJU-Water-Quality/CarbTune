@@ -4,7 +4,7 @@
 
 ### Code availability
 
-The CarbTune source code, input validation utilities, processed model inputs and reproducible software environment are available at https://github.com/NJU-Water-Quality/CarbTune. The repository includes scripts for feature construction, two-stage XGBoost training, cross-validation and prediction. The version associated with the published article will be archived in Zenodo and cited using its permanent DOI: **[add archived release DOI]**.
+The CarbTune source code, input validation utilities, processed model inputs and reproducible software environment are available at https://github.com/NJU-Water-Quality/CarbTune. The repository includes scripts for feature construction, two-stage XGBoost training, cross-validation and prediction.
 
 ### Data availability
 
